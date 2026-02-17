@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Thumbnail Downloader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(76, 29, 149, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(15, 23, 42, 1) 0%, rgba(88, 28, 135, 0.2) 100%);
+            min-height: 100vh;
+            color: #f8fafc;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .input-field {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .input-field:focus {
+            border-color: #a855f7;
+            box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.2);
+        }
+        .download-btn {
+            background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(147, 51, 234, 0.4);
+        }
+        .thumbnail-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .thumbnail-card:hover {
+            transform: scale(1.02);
+            border-color: rgba(168, 85, 247, 0.4);
+        }
+        .img-container .overlay {
+            background: rgba(0, 0, 0, 0.6);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .img-container:hover .overlay {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+
+    <div class="max-w-5xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 id="ui-title" class="text-4xl md:text-6xl font-bold mb-4 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-300">
+                YouTube Thumbnail
+            </h1>
+            <p id="ui-subtitle" class="text-gray-400 text-lg max-w-lg mx-auto">
+                Capture high-quality thumbnails instantly. Just paste and save.
+            </p>
+        </header>
+
+        <!-- Search Section -->
+        <div class="glass-panel rounded-3xl p-6 md:p-8 mb-12">
+            <div class="flex flex-col md:flex-row gap-4">
+                <input 
+                    type="text" 
+                    id="urlInput" 
+                    placeholder="Paste YouTube URL here..."
+                    class="input-field flex-1 px-6 py-4 rounded-2xl outline-none text-white text-lg"
+                >
+                <button 
+                    onclick="handleParse()"
+                    class="download-btn text-white font-bold py-4 px-12 rounded-2xl flex items-center justify-center gap-2"
+                >
+                    <span id="ui-btn-text">Grab It</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+            <p id="errorMsg" class="mt-4 text-red-400 font-medium hidden text-center italic"></p>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="hidden text-center py-20">
+            <div class="inline-block w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+
+        <!-- Result Grid -->
+        <div id="results" class="grid grid-cols-1 md:grid-cols-2 gap-8 hidden"></div>
+    </div>
+
+    <script>
+        // 語言設定文字
+        const i18n = {
+            zh: {
+                title: "(oﾟ▽ﾟ)o YouTube 封面抓取",
+                subtitle: "輸入網址就能獲取高清封面圖唷！✨",
+                placeholder: "在此貼上 YouTube 影片網址...",
+                btnGrab: "獲取封面",
+                error: "⚠️ 哎呀，網址好像不太對喔，再檢查一下下！",
+                loading: "努力載入中...",
+                download: "點擊下載",
+                q_max: "超高清 (MaxRes)",
+                q_sd: "高清 (Standard)",
+                q_hq: "標準 (High)",
+                q_mq: "普通 (Medium)"
+            },
+            en: {
+                title: "(oﾟ▽ﾟ)o YouTube Thumbnails Grabber",
+                subtitle: "Grab high-resolution thumbnails for any video. ✨",
+                placeholder: "Paste YouTube URL here...",
+                btnGrab: "Grab Now",
+                error: "⚠️ Oops! That URL doesn't look right. Please check again.",
+                loading: "Fetching...",
+                download: "Download Now",
+                q_max: "Ultra High (MaxRes)",
+                q_sd: "Standard HD (SD)",
+                q_hq: "High Quality (HQ)",
+                q_mq: "Medium Quality (MQ)"
+            }
+        };
+
+        // 偵測語言 (繁中/簡中都用 zh，其餘 en)
+        const userLang = navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en';
+        const lang = i18n[userLang];
+
+        // 初始化介面語言
+        function initLanguage() {
+            document.getElementById('ui-title').innerText = lang.title;
+            document.getElementById('ui-subtitle').innerText = lang.subtitle;
+            document.getElementById('urlInput').placeholder = lang.placeholder;
+            document.getElementById('ui-btn-text').innerText = lang.btnGrab;
+            document.getElementById('errorMsg').innerText = lang.error;
+            document.title = lang.title;
+        }
+
+        const urlInput = document.getElementById('urlInput');
+        const resultsContainer = document.getElementById('results');
+        const errorMsg = document.getElementById('errorMsg');
+        const loading = document.getElementById('loading');
+
+        window.addEventListener('load', () => {
+            initLanguage();
+            const hashId = window.location.hash.replace('#/', '');
+            if (hashId) {
+                urlInput.value = `https://www.youtube.com/watch?v=${hashId}`;
+                fetchThumbnails(hashId);
+            }
+        });
+
+        window.addEventListener('hashchange', () => {
+            const hashId = window.location.hash.replace('#/', '');
+            if (hashId) fetchThumbnails(hashId);
+        });
+
+        function handleParse() {
+            const url = urlInput.value.trim();
+            const videoId = extractVideoId(url);
+            if (videoId) {
+                errorMsg.classList.add('hidden');
+                window.location.hash = `/${videoId}`;
+            } else {
+                errorMsg.classList.remove('hidden');
+            }
+        }
+
+        function extractVideoId(url) {
+            const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+            const match = url.match(regex);
+            return (match && match[1]) ? match[1] : null;
+        }
+
+        async function fetchThumbnails(videoId) {
+            resultsContainer.innerHTML = '';
+            resultsContainer.classList.add('hidden');
+            loading.classList.remove('hidden');
+
+            const qualities = [
+                { name: lang.q_max, suffix: 'maxresdefault.jpg' },
+                { name: lang.q_sd, suffix: 'sddefault.jpg' },
+                { name: lang.q_hq, suffix: 'hqdefault.jpg' },
+                { name: lang.q_mq, suffix: 'mqdefault.jpg' }
+            ];
+
+            for (const q of qualities) {
+                const imgUrl = `https://i.ytimg.com/vi/${videoId}/${q.suffix}`;
+                const dimensions = await getImageDimensions(imgUrl);
+                
+                if (dimensions) {
+                    const sizeLabel = `${dimensions.width} × ${dimensions.height}`;
+                    const card = createCard(q.name, imgUrl, sizeLabel);
+                    resultsContainer.appendChild(card);
+                }
+            }
+
+            loading.classList.add('hidden');
+            resultsContainer.classList.remove('hidden');
+        }
+
+        function createCard(title, url, sizeLabel) {
+            const div = document.createElement('div');
+            div.className = 'thumbnail-card glass-panel rounded-2xl overflow-hidden group cursor-pointer';
+            div.innerHTML = `
+                <div class="p-5 flex justify-between items-center border-b border-white/5">
+                    <span class="font-semibold text-purple-300">${title}</span>
+                    <span class="text-xs font-mono bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full border border-purple-500/30">${sizeLabel}</span>
+                </div>
+                <div class="relative img-container aspect-video overflow-hidden">
+                    <img src="${url}" class="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110" alt="${title}">
+                    <div class="overlay absolute inset-0 flex items-center justify-center">
+                        <div class="bg-white text-gray-900 px-8 py-3 rounded-full font-bold shadow-2xl flex items-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                            ${lang.download}
+                        </div>
+                    </div>
+                </div>
+            `;
+            div.onclick = () => downloadImage(url);
+            return div;
+        }
+
+        function getImageDimensions(url) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = function() {
+                    if (this.width > 120) resolve({ width: this.width, height: this.height });
+                    else resolve(null);
+                };
+                img.onerror = () => resolve(null);
+                img.src = url;
+            });
+        }
+
+        async function downloadImage(url) {
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = `yt-thumbnail-${Date.now()}.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(blobUrl);
+            } catch (e) {
+                window.open(url, '_blank');
+            }
+        }
+    </script>
+</body>
+</html>
