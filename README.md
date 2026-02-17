@@ -37,3 +37,9 @@ Since this is a client-side tool, you can simply open the `index.html` file in a
 git clone [https://github.com/yourusername/yt-thumbnail-downloader.git](https://github.com/yourusername/yt-thumbnail-downloader.git)
 cd yt-thumbnail-downloader
 # Open index.html in your browser
+
+```
+
+## 📄 License
+
+This project is open-source and available under the [MIT License]().
